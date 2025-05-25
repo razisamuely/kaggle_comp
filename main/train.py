@@ -6,6 +6,7 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, median_absolute_error, mean_absolute_error
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
+from sklearn.base import BaseEstimator
 from enum import Enum
 from tqdm import tqdm
 import xgboost as xgb
@@ -19,13 +20,8 @@ import optuna
 import joblib
 import argparse
 import os
-
+from main.utils.tabnet import create_tabnet_pipeline, train_tabnet_model, is_tabnet_model, get_tabnet_params
 optuna.logging.set_verbosity(optuna.logging.WARNING)
-
-class ProblemType(Enum):
-    AUTO = 'auto'
-    CLASSIFICATION = 'classification'
-    REGRESSION = 'regression'
 
 class Metric(Enum):
     ACCURACY = 'accuracy'
@@ -49,7 +45,7 @@ def get_metric_config(metric, is_clf):
 def load_data(path):
     return pd.read_csv(path)
 
-def preprocess(df, target_col=None, problem_type=ProblemType.AUTO):
+def preprocess(df, target_col=None):
     if target_col:
         X, y = df.drop(target_col, axis=1), df[target_col]
     else:
@@ -63,10 +59,7 @@ def preprocess(df, target_col=None, problem_type=ProblemType.AUTO):
         ('cat', LabelEncoder(), cat_cols)
     ])
     
-    if problem_type == ProblemType.AUTO:
-        is_clf = y.dtype == 'object' or (y.dtype in ['int64', 'int32'] and len(y.unique()) < 20)
-    else:
-        is_clf = problem_type == ProblemType.CLASSIFICATION
+    is_clf = y.dtype == 'object' or (y.dtype in ['int64', 'int32'] and len(y.unique()) < 20)
     
     if y.dtype == 'object':
         y = LabelEncoder().fit_transform(y)
@@ -82,38 +75,9 @@ def optimize_model(trial, X_train, y_train, algo_config, metric_config):
         else:
             params[f'model__{param}'] = trial.suggest_float(param, config['low'], config['high'])
     
-    if TABNET_AVAILABLE and algo_config['model_class'] in [TabNetClassifier, TabNetRegressor]:
-        from sklearn.base import BaseEstimator
-        
-        class TabNetWrapper(BaseEstimator):
-            def __init__(self, model_class, **kwargs):
-                self.model_class = model_class
-                self.kwargs = kwargs
-                
-            def fit(self, X, y):
-                self.model_ = self.model_class(verbose=0, seed=42, **self.kwargs)
-                X_vals = X.values if hasattr(X, 'values') else X
-                y_vals = y.values if hasattr(y, 'values') else y
-                if len(y_vals.shape) == 1:
-                    y_vals = y_vals.reshape(-1, 1)
-                self.model_.fit(X_vals, y_vals)
-                return self
-                
-            def predict(self, X):
-                X_vals = X.values if hasattr(X, 'values') else X
-                return self.model_.predict(X_vals)
-        
-        num_cols = X_train.select_dtypes(include=['int64', 'float64']).columns
-        cat_cols = X_train.select_dtypes(include=['object']).columns
-        tabnet_preprocessor = ColumnTransformer([
-            ('num', StandardScaler(), num_cols),
-            ('cat', LabelEncoder(), cat_cols)
-        ])
-        
-        pipeline = Pipeline([
-            ('preprocessor', tabnet_preprocessor),
-            ('model', TabNetWrapper(algo_config['model_class'], **{k.replace('model__', ''): v for k, v in params.items()}))
-        ])
+    if is_tabnet_model(algo_config['model_class']):
+        clean_params = {k.replace('model__', ''): v for k, v in params.items()}
+        pipeline = create_tabnet_pipeline(algo_config['model_class'], clean_params, X_train)
     else:
         pipeline = Pipeline([
             ('preprocessor', algo_config['preprocessor']),
@@ -129,37 +93,7 @@ def train_single_algo(name, algo_config, X_train, X_test, y_train, y_test, n_tri
     study.optimize(lambda trial: optimize_model(trial, X_train, y_train, algo_config, metric_config), n_trials=n_trials)
     
     if name == 'TABNET' and TABNET_AVAILABLE:
-        # Create TabNet with preprocessing pipeline
-        from sklearn.preprocessing import StandardScaler, LabelEncoder
-        from sklearn.compose import ColumnTransformer
-        num_cols = X_train.select_dtypes(include=['int64', 'float64']).columns
-        cat_cols = X_train.select_dtypes(include=['object']).columns
-        tabnet_preprocessor = ColumnTransformer([
-            ('num', StandardScaler(), num_cols),
-            ('cat', LabelEncoder(), cat_cols)
-        ])
-        
-        class TabNetWrapper:
-            def __init__(self, model_class, **kwargs):
-                self.model_class = model_class
-                self.kwargs = kwargs
-                self.preprocessor = tabnet_preprocessor
-                
-            def fit(self, X, y):
-                X_processed = self.preprocessor.fit_transform(X)
-                self.model_ = self.model_class(verbose=0, seed=42, **self.kwargs)
-                y_vals = y.values if hasattr(y, 'values') else y
-                if len(y_vals.shape) == 1:
-                    y_vals = y_vals.reshape(-1, 1)
-                self.model_.fit(X_processed, y_vals)
-                return self
-                
-            def predict(self, X):
-                X_processed = self.preprocessor.transform(X)
-                return self.model_.predict(X_processed)
-        
-        model = TabNetWrapper(algo_config['model_class'], **study.best_params)
-        model.fit(X_train, y_train)
+        model = train_tabnet_model(algo_config['model_class'], study.best_params, X_train, y_train)
         pred = model.predict(X_test)
     else:
         pipeline = Pipeline([
@@ -195,14 +129,6 @@ def get_algos(is_clf, preprocessor):
         'colsample_bytree': {'type': 'float', 'low': 0.6, 'high': 1.0}
     }
     
-    tabnet_params = {
-        'n_d': {'type': 'int', 'low': 8, 'high': 64},
-        'n_a': {'type': 'int', 'low': 8, 'high': 64},
-        'n_steps': {'type': 'int', 'low': 3, 'high': 10},
-        'gamma': {'type': 'float', 'low': 1.0, 'high': 2.0},
-        'lambda_sparse': {'type': 'float', 'low': 1e-6, 'high': 1e-3}
-    }
-    
     algos = {}
     
     if is_clf:
@@ -212,7 +138,7 @@ def get_algos(is_clf, preprocessor):
             'LGBM': {'model_class': lgb.LGBMClassifier, 'params': tree_params, 'preprocessor': preprocessor}
         })
         if TABNET_AVAILABLE:
-            algos['TABNET'] = {'model_class': TabNetClassifier, 'params': tabnet_params, 'preprocessor': None}
+            algos['TABNET'] = {'model_class': TabNetClassifier, 'params': get_tabnet_params(), 'preprocessor': None}
     else:
         algos.update({
             'RF': {'model_class': RandomForestRegressor, 'params': rf_params, 'preprocessor': preprocessor},
@@ -220,7 +146,7 @@ def get_algos(is_clf, preprocessor):
             'LGBM': {'model_class': lgb.LGBMRegressor, 'params': tree_params, 'preprocessor': preprocessor}
         })
         if TABNET_AVAILABLE:
-            algos['TABNET'] = {'model_class': TabNetRegressor, 'params': tabnet_params, 'preprocessor': None}
+            algos['TABNET'] = {'model_class': TabNetRegressor, 'params': get_tabnet_params(), 'preprocessor': None}
     
     return algos
 
