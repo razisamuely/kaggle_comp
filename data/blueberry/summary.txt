@@ -1,0 +1,56 @@
+DATASET: BLUEBERRY
+==================================================
+
+BASIC INFO:
+Train Shape: (15000, 19)
+Test Shape: (10000, 18)
+Target Column: ['yield']
+Feature Columns: 18
+
+COLUMN TYPES:
+float64    18
+int64       1
+Name: count, dtype: int64
+
+MISSING VALUES:
+No missing values
+
+NUMERIC COLUMNS DESCRIBE:
+                 id          Row#     clonesize      honeybee       bumbles  ...  AverageRainingDays      fruitset     fruitmass         seeds         yield
+count  15000.000000  15000.000000  15000.000000  15000.000000  15000.000000  ...        15000.000000  15000.000000  15000.000000  15000.000000  15000.000000
+mean    7499.500000    427.192733     19.777000      0.385987      0.284126  ...            0.325791      0.499935      0.445562     36.063967   5997.986421
+std     4330.271354    214.326745      6.657506      0.308214      0.058749  ...            0.167153      0.077044      0.038487      4.084170   1360.498398
+min        0.000000      0.000000     10.000000      0.000000      0.000000  ...            0.060000      0.192732      0.234227     22.079199   1637.704020
+25%     3749.750000    249.000000     12.500000      0.250000      0.250000  ...            0.260000      0.451083      0.417915     33.228900   5086.609910
+50%     7499.500000    467.000000     25.000000      0.500000      0.250000  ...            0.260000      0.502980      0.445497     35.972257   6060.641490
+75%    11249.250000    598.000000     25.000000      0.500000      0.380000  ...            0.390000      0.560445      0.471713     39.046593   7019.694380
+max    14999.000000    778.000000     40.000000     18.430000      0.585000  ...            0.560000      0.832319      0.832319     46.585105   8969.401840
+
+[8 rows x 19 columns]
+
+CATEGORICAL COLUMNS INFO:
+
+DETAILED ANALYSIS:
+
+blueberry_train:
+  Shape: (12750, 19)
+  Memory: 1.95 MB
+  Nulls: 0 (0.0%)
+  Duplicates: 0
+  Skewed columns: ['honeybee']
+  High correlations: [('MaxOfUpperTRange', 'MinOfUpperTRange', np.float64(0.9982827084520858)), ('MaxOfUpperTRange', 'AverageOfUpperTRange', np.float64(0.9993442300149824)), ('MaxOfUpperTRange', 'MaxOfLowerTRange', np.float64(0.9997253906175476))]
+
+blueberry_val:
+  Shape: (2250, 19)
+  Memory: 0.34 MB
+  Nulls: 0 (0.0%)
+  Duplicates: 0
+  High correlations: [('clonesize', 'honeybee', np.float64(0.8405740435438512)), ('MaxOfUpperTRange', 'MinOfUpperTRange', np.float64(0.9990033006802764)), ('MaxOfUpperTRange', 'AverageOfUpperTRange', np.float64(0.9976486355829155))]
+
+blueberry_test:
+  Shape: (10000, 18)
+  Memory: 1.37 MB
+  Nulls: 0 (0.0%)
+  Duplicates: 0
+  Skewed columns: ['honeybee']
+  High correlations: [('MaxOfUpperTRange', 'MinOfUpperTRange', np.float64(0.9995516860583413)), ('MaxOfUpperTRange', 'AverageOfUpperTRange', np.float64(0.9999189150367018)), ('MaxOfUpperTRange', 'MaxOfLowerTRange', np.float64(0.999871387156978))]

@@ -1,0 +1,80 @@
+DATASET: CIRRHOSIS
+==================================================
+
+BASIC INFO:
+Train Shape: (15000, 20)
+Test Shape: (10000, 19)
+Target Column: ['Status']
+Feature Columns: 19
+
+COLUMN TYPES:
+float64    12
+object      7
+int64       1
+Name: count, dtype: int64
+
+MISSING VALUES:
+Drug             6475
+Ascites          6474
+Hepatomegaly     6483
+Spiders          6484
+Cholesterol      8275
+Copper           6589
+Alk_Phos         6488
+SGOT             6489
+Tryglicerides    8316
+Platelets         643
+Prothrombin        13
+dtype: int64
+
+NUMERIC COLUMNS DESCRIBE:
+                 id        N_Days          Age     Bilirubin  Cholesterol       Albumin  ...      Alk_Phos         SGOT  Tryglicerides     Platelets   Prothrombin         Stage
+count  15000.000000  15000.000000  15000.00000  15000.000000  6725.000000  15000.000000  ...   8512.000000  8511.000000    6684.000000  14357.000000  14987.000000  15000.000000
+mean    7499.500000   1975.817400  19323.26560      1.851357   325.860223      3.525353  ...   1612.624852   105.854203     110.492968    252.920805     10.628138      3.030733
+std     4330.271354   1351.627734   3647.54017      2.751008   182.868978      0.372141  ...   1789.265146    51.018404      50.549704     95.990165      0.729776      0.879985
+min        0.000000     41.000000   1212.00000      0.300000    51.000000      1.960000  ...      2.940000     0.900000      33.000000      3.000000      9.000000      1.000000
+25%     3749.750000   1095.000000  16688.00000      0.600000   239.000000      3.290000  ...    696.000000    70.000000      78.000000    183.000000     10.100000      2.000000
+50%     7499.500000   1785.000000  19698.00000      0.900000   280.000000      3.580000  ...   1065.000000    97.650000      99.000000    248.000000     10.600000      3.000000
+75%    11249.250000   2635.000000  22514.00000      1.800000   360.000000      3.770000  ...   1653.000000   130.200000     133.000000    311.000000     11.000000      4.000000
+max    14999.000000  25569.000000  30972.00000     28.000000  4256.000000      5.600000  ...  25340.000000   601.350000     674.000000   3374.000000     18.000000      4.000000
+
+[8 rows x 13 columns]
+
+CATEGORICAL COLUMNS INFO:
+Drug: 2 unique values
+Top values: {'D-penicillamine': np.int64(4599), 'Placebo': np.int64(3926)}
+Sex: 2 unique values
+Top values: {'F': np.int64(14400), 'M': np.int64(600)}
+Ascites: 2 unique values
+Top values: {'N': np.int64(8126), 'Y': np.int64(400)}
+Hepatomegaly: 2 unique values
+Top values: {'N': np.int64(4650), 'Y': np.int64(3867)}
+Spiders: 2 unique values
+Top values: {'N': np.int64(6658), 'Y': np.int64(1858)}
+Edema: 3 unique values
+Top values: {'N': np.int64(13850), 'S': np.int64(778), 'Y': np.int64(372)}
+Status: 3 unique values
+Top values: {'C': np.int64(10147), 'D': np.int64(4475), 'CL': np.int64(378)}
+
+DETAILED ANALYSIS:
+
+cirrhosis_train:
+  Shape: (12750, 20)
+  Memory: 5.83 MB
+  Nulls: 52909 (20.7%)
+  Duplicates: 0
+  Skewed columns: ['N_Days', 'Bilirubin', 'Cholesterol', 'Copper', 'Alk_Phos', 'Tryglicerides', 'Platelets']
+
+cirrhosis_val:
+  Shape: (2250, 20)
+  Memory: 1.02 MB
+  Nulls: 9820 (21.8%)
+  Duplicates: 0
+  Skewed columns: ['N_Days', 'Bilirubin', 'Cholesterol', 'Copper', 'Alk_Phos', 'Tryglicerides']
+
+cirrhosis_test:
+  Shape: (10000, 19)
+  Memory: 3.93 MB
+  Nulls: 42064 (22.1%)
+  Duplicates: 0
+  Skewed columns: ['N_Days', 'Bilirubin', 'Cholesterol', 'Copper', 'Alk_Phos', 'Tryglicerides', 'Platelets']

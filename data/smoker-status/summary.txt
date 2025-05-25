@@ -1,0 +1,57 @@
+DATASET: SMOKER-STATUS
+==================================================
+
+BASIC INFO:
+Train Shape: (15000, 24)
+Test Shape: (10000, 23)
+Target Column: ['smoking']
+Feature Columns: 23
+
+COLUMN TYPES:
+float64    23
+int64       1
+Name: count, dtype: int64
+
+MISSING VALUES:
+No missing values
+
+NUMERIC COLUMNS DESCRIBE:
+                 id           age    height(cm)    weight(kg)     waist(cm)  ...           AST           ALT           Gtp  dental caries       smoking
+count  15000.000000  15000.000000  15000.000000  15000.000000  15000.000000  ...  15000.000000  15000.000000  15000.000000   15000.000000  15000.000000
+mean    7499.500000     42.672000    164.617333     64.303000     80.305127  ...     22.261067     20.803467     25.987667       0.147933      0.363400
+std     4330.271354     10.671052      8.585947     11.057004      7.951228  ...      5.678790     10.197714     18.763086       0.355046      0.480995
+min        0.000000     20.000000    140.000000     35.000000      1.200000  ...      9.000000      3.000000      1.000000       0.000000      0.000000
+25%     3749.750000     40.000000    160.000000     55.000000     75.000000  ...     18.000000     14.000000     15.000000       0.000000      0.000000
+50%     7499.500000     40.000000    165.000000     65.000000     80.000000  ...     21.000000     18.000000     21.000000       0.000000      0.000000
+75%    11249.250000     50.000000    170.000000     70.000000     86.000000  ...     25.000000     24.000000     30.000000       0.000000      1.000000
+max    14999.000000     80.000000    190.000000    130.000000    120.000000  ...    119.000000    177.000000    371.000000       1.000000      1.000000
+
+[8 rows x 24 columns]
+
+CATEGORICAL COLUMNS INFO:
+
+DETAILED ANALYSIS:
+
+smoker-status_train:
+  Shape: (12750, 24)
+  Memory: 2.43 MB
+  Nulls: 0 (0.0%)
+  Duplicates: 0
+  Skewed columns: ['eyesight(left)', 'eyesight(right)', 'hearing(left)', 'hearing(right)', 'fasting blood sugar', 'Urine protein', 'ALT', 'Gtp']
+  High correlations: [('weight(kg)', 'waist(cm)', np.float64(0.829208471766536)), ('Cholesterol', 'LDL', np.float64(0.8577737488788295))]
+
+smoker-status_val:
+  Shape: (2250, 24)
+  Memory: 0.43 MB
+  Nulls: 0 (0.0%)
+  Duplicates: 0
+  Skewed columns: ['eyesight(left)', 'hearing(left)', 'hearing(right)', 'fasting blood sugar', 'Urine protein', 'AST', 'ALT', 'Gtp']
+  High correlations: [('weight(kg)', 'waist(cm)', np.float64(0.8248113032070361)), ('Cholesterol', 'LDL', np.float64(0.8483642976441749))]
+
+smoker-status_test:
+  Shape: (10000, 23)
+  Memory: 1.75 MB
+  Nulls: 0 (0.0%)
+  Duplicates: 0
+  Skewed columns: ['eyesight(left)', 'eyesight(right)', 'hearing(left)', 'hearing(right)', 'fasting blood sugar', 'Urine protein', 'ALT', 'Gtp', 'dental caries']
+  High correlations: [('weight(kg)', 'waist(cm)', np.float64(0.8359461445438641)), ('Cholesterol', 'LDL', np.float64(0.8511901133692985))]
