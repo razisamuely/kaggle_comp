@@ -125,11 +125,13 @@ def get_algos(is_clf, preprocessor):
     }
     
     tree_params = {
-        'n_estimators': {'type': 'int', 'low': 50, 'high': 300},
-        'max_depth': {'type': 'int', 'low': 3, 'high': 10},
+        'n_estimators': {'type': 'int', 'low': 50, 'high': 700},
+        'max_depth': {'type': 'int', 'low': 2, 'high': 30},
         'learning_rate': {'type': 'float', 'low': 0.01, 'high': 0.3},
-        'subsample': {'type': 'float', 'low': 0.6, 'high': 1.0},
-        'colsample_bytree': {'type': 'float', 'low': 0.6, 'high': 1.0}
+        'subsample': {'type': 'float', 'low': 0.1, 'high': 1.0},
+        'colsample_bytree': {'type': 'float', 'low': 0.6, 'high': 1.0},
+        'reg_alpha': {'type': 'float', 'low': 0.0, 'high': 1.0},
+        'reg_lambda': {'type': 'float', 'low': 0.0, 'high': 1.0}
     }
     
     algos = {}
