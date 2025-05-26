@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, median_absolute_error, mean_absolute_error
+from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, median_absolute_error, mean_absolute_error, roc_auc_score
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.base import BaseEstimator
@@ -25,6 +25,7 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 class Metric(Enum):
     ACCURACY = 'accuracy'
+    AUC = 'auc'
     R2 = 'r2'
     MSE = 'mse'
     MAE = 'mae'
@@ -32,6 +33,8 @@ class Metric(Enum):
 
 def get_metric_config(metric, is_clf):
     if is_clf:
+        if metric == Metric.AUC:
+            return {'cv_scoring': 'roc_auc', 'eval_func': roc_auc_score, 'maximize': True}
         return {'cv_scoring': 'accuracy', 'eval_func': accuracy_score, 'maximize': True}
     
     configs = {
@@ -167,9 +170,11 @@ def create_report(results, y_test, is_clf, output_dir, prefix, metric, metric_co
     
     for name, result in results.items():
         if is_clf:
-            summary_data.append({
-                'Model': name, 'Accuracy': result['score'], 'Params': str(result['params'])
-            })
+            acc = accuracy_score(y_test, result['pred'])
+            row = {'Model': name, 'Accuracy': acc, 'Params': str(result['params'])}
+            if metric == Metric.AUC:
+                row['AUC'] = result['score']
+            summary_data.append(row)
         else:
             mse = mean_squared_error(y_test, result['pred'])
             mae = mean_absolute_error(y_test, result['pred'])
@@ -186,7 +191,7 @@ def create_report(results, y_test, is_clf, output_dir, prefix, metric, metric_co
         if is_better:
             best_score, best_model, best_name = result['score'], result['model'], name
     
-    metric_name = "Accuracy" if is_clf else metric.value.upper()
+    metric_name = "Accuracy" if is_clf and metric != Metric.AUC else metric.value.upper()
     print(f"Best: {best_name} ({metric_name}: {best_score:.4f})")
     
     summary_path = os.path.join(output_dir, f'{prefix}_{best_name}_summary_{abs(best_score):.4f}.txt')
