@@ -25,7 +25,7 @@ def verify_predictions(dataset_name):
     test_csv_path = f"data/{dataset_name}/test.csv"
     test_df = pd.read_csv(test_csv_path)
 
-    prediction_path = f"data/{dataset_name}/predictions.csv"
+    prediction_path = f"data/{dataset_name}/submission.csv"
     predictions_df = pd.read_csv(prediction_path)
     
     if len(test_df) != len(predictions_df):
@@ -45,3 +45,9 @@ def verify_predictions(dataset_name):
     
 
     return True
+
+
+if __name__ == "__main__":
+    # Example usage
+    verify_predictions("mohs")
+    print("Predictions verified successfully.")

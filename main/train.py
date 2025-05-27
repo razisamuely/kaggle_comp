@@ -73,23 +73,43 @@ def preprocess(df, target_col=None):
 def optimize_model(trial, X_train, y_train, algo_config, metric_config):
     params = {}
     for param, config in algo_config['params'].items():
+        param_key = f'model__{param}'
+        
         if config['type'] == 'int':
-            params[f'model__{param}'] = trial.suggest_int(param, config['low'], config['high'])
+            params[param_key] = trial.suggest_int(param, config['low'], config['high'])
+        
+        elif config['type'] == 'float':
+            if config.get('log', False):
+                params[param_key] = trial.suggest_float(param, config['low'], config['high'], log=True)
+            else:
+                params[param_key] = trial.suggest_float(param, config['low'], config['high'])
+        
+        elif config['type'] == 'categorical':
+            params[param_key] = trial.suggest_categorical(param, config['choices'])
+
         else:
-            params[f'model__{param}'] = trial.suggest_float(param, config['low'], config['high'])
+            raise ValueError(f"Unknown parameter type for {param}: {config['type']}")
     
+    # For TabNet
     if is_tabnet_model(algo_config['model_class']):
         clean_params = {k.replace('model__', ''): v for k, v in params.items()}
         pipeline = create_tabnet_pipeline(algo_config['model_class'], clean_params, X_train)
+    
+    # For other models
     else:
         pipeline = Pipeline([
             ('preprocessor', algo_config['preprocessor']),
             ('model', algo_config['model_class'](random_state=42))
         ])
         pipeline.set_params(**params)
-    
-    scores = cross_val_score(pipeline, X_train, y_train, cv=5, scoring=metric_config['cv_scoring'])
+
+    # Perform 10-fold cross-validation
+    scores = cross_val_score(pipeline, X_train, y_train, cv=10, scoring=metric_config['cv_scoring'])
+
+    # Optional: log the score
+    trial.set_user_attr("cv_score", scores.mean())
     return scores.mean()
+
 
 def train_single_algo(name, algo_config, X_train, X_test, y_train, y_test, n_trials, metric_config):
     study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=42))
@@ -118,21 +138,26 @@ def train_single_algo(name, algo_config, X_train, X_test, y_train, y_test, n_tri
 
 def get_algos(is_clf, preprocessor):
     rf_params = {
-        'n_estimators': {'type': 'int', 'low': 50, 'high': 300},
-        'max_depth': {'type': 'int', 'low': 3, 'high': 20},
-        'min_samples_split': {'type': 'int', 'low': 2, 'high': 20},
-        'min_samples_leaf': {'type': 'int', 'low': 1, 'high': 10}
+        'n_estimators': {'type': 'int', 'low': 100, 'high': 2000},
+        'max_depth': {'type': 'int', 'low': 3, 'high': 100},
+        'min_samples_split': {'type': 'int', 'low': 2, 'high': 50},
+        'min_samples_leaf': {'type': 'int', 'low': 1, 'high': 30},
+        'max_features': {'type': 'float', 'low': 0.1, 'high': 1.0},  # float for proportion
+        'bootstrap': {'type': 'categorical', 'choices': [True, False]}
     }
+
     
     tree_params = {
-        'n_estimators': {'type': 'int', 'low': 50, 'high': 700},
-        'max_depth': {'type': 'int', 'low': 2, 'high': 30},
-        'learning_rate': {'type': 'float', 'low': 0.01, 'high': 0.3},
-        'subsample': {'type': 'float', 'low': 0.1, 'high': 1.0},
-        'colsample_bytree': {'type': 'float', 'low': 0.6, 'high': 1.0},
-        'reg_alpha': {'type': 'float', 'low': 0.0, 'high': 1.0},
-        'reg_lambda': {'type': 'float', 'low': 0.0, 'high': 1.0}
-    }
+    'n_estimators': {'type': 'int', 'low': 100, 'high': 5000},
+    'max_depth': {'type': 'int', 'low': 3, 'high': 50},
+    'learning_rate': {'type': 'float', 'low': 1e-4, 'high': 0.3, 'log': True},
+    'subsample': {'type': 'float', 'low': 0.3, 'high': 1.0},
+    'colsample_bytree': {'type': 'float', 'low': 0.3, 'high': 1.0},
+    'reg_alpha': {'type': 'float', 'low': 1e-4, 'high': 10.0, 'log': True},
+    'reg_lambda': {'type': 'float', 'low': 1e-4, 'high': 10.0, 'log': True},
+    'min_child_weight': {'type': 'int', 'low': 1, 'high': 50}
+}
+
     
     algos = {}
     
@@ -223,7 +248,8 @@ def main():
     results, metric_config = train_all_models(X_train, X_test, y_train, y_test, is_clf, preprocessor, args.n_trials, metric)
     best_model, best_name, best_score = create_report(results, y_test, is_clf, args.output_dir, args.prefix, metric, metric_config)
     
-    model_path = os.path.join(args.output_dir, f'{args.prefix}_{best_name}_{best_score:.4f}.pkl')
+    model_path = os.path.join(args.output_dir, f'{args.prefix}_{best_name}_{args.metric}_{best_score:.4f}.pkl')
+
     joblib.dump(best_model, model_path)
     print(f"Saved: {model_path}")
 
