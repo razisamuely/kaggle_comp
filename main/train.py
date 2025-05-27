@@ -1,3 +1,4 @@
+from datetime import datetime
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, cross_val_score
@@ -248,7 +249,8 @@ def main():
     results, metric_config = train_all_models(X_train, X_test, y_train, y_test, is_clf, preprocessor, args.n_trials, metric)
     best_model, best_name, best_score = create_report(results, y_test, is_clf, args.output_dir, args.prefix, metric, metric_config)
     
-    model_path = os.path.join(args.output_dir, f'{args.prefix}_{best_name}_{args.metric}_{best_score:.4f}.pkl')
+    date_str = datetime.now().strftime("%Y%m%d")
+    model_path = os.path.join(args.output_dir, f'{args.prefix}_{best_name}_{args.metric}_{best_score:.4f}_{date_str}.pkl')
 
     joblib.dump(best_model, model_path)
     print(f"Saved: {model_path}")
