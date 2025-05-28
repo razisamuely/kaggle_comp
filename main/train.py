@@ -1,4 +1,3 @@
-from datetime import datetime
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, cross_val_score
@@ -23,7 +22,7 @@ import argparse
 import os
 from main.utils.tabnet import create_tabnet_pipeline, train_tabnet_model, is_tabnet_model, get_tabnet_params
 optuna.logging.set_verbosity(optuna.logging.WARNING)
-
+import datetime
 class Metric(Enum):
     ACCURACY = 'accuracy'
     AUC = 'auc'
@@ -74,43 +73,23 @@ def preprocess(df, target_col=None):
 def optimize_model(trial, X_train, y_train, algo_config, metric_config):
     params = {}
     for param, config in algo_config['params'].items():
-        param_key = f'model__{param}'
-        
         if config['type'] == 'int':
-            params[param_key] = trial.suggest_int(param, config['low'], config['high'])
-        
-        elif config['type'] == 'float':
-            if config.get('log', False):
-                params[param_key] = trial.suggest_float(param, config['low'], config['high'], log=True)
-            else:
-                params[param_key] = trial.suggest_float(param, config['low'], config['high'])
-        
-        elif config['type'] == 'categorical':
-            params[param_key] = trial.suggest_categorical(param, config['choices'])
-
+            params[f'model__{param}'] = trial.suggest_int(param, config['low'], config['high'])
         else:
-            raise ValueError(f"Unknown parameter type for {param}: {config['type']}")
+            params[f'model__{param}'] = trial.suggest_float(param, config['low'], config['high'])
     
-    # For TabNet
     if is_tabnet_model(algo_config['model_class']):
         clean_params = {k.replace('model__', ''): v for k, v in params.items()}
         pipeline = create_tabnet_pipeline(algo_config['model_class'], clean_params, X_train)
-    
-    # For other models
     else:
         pipeline = Pipeline([
             ('preprocessor', algo_config['preprocessor']),
             ('model', algo_config['model_class'](random_state=42))
         ])
         pipeline.set_params(**params)
-
-    # Perform 10-fold cross-validation
-    scores = cross_val_score(pipeline, X_train, y_train, cv=10, scoring=metric_config['cv_scoring'])
-
-    # Optional: log the score
-    trial.set_user_attr("cv_score", scores.mean())
+    
+    scores = cross_val_score(pipeline, X_train, y_train, cv=5, scoring=metric_config['cv_scoring'])
     return scores.mean()
-
 
 def train_single_algo(name, algo_config, X_train, X_test, y_train, y_test, n_trials, metric_config):
     study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=42))
@@ -139,26 +118,19 @@ def train_single_algo(name, algo_config, X_train, X_test, y_train, y_test, n_tri
 
 def get_algos(is_clf, preprocessor):
     rf_params = {
-        'n_estimators': {'type': 'int', 'low': 100, 'high': 2000},
-        'max_depth': {'type': 'int', 'low': 3, 'high': 100},
-        'min_samples_split': {'type': 'int', 'low': 2, 'high': 50},
-        'min_samples_leaf': {'type': 'int', 'low': 1, 'high': 30},
-        'max_features': {'type': 'float', 'low': 0.1, 'high': 1.0},  # float for proportion
-        'bootstrap': {'type': 'categorical', 'choices': [True, False]}
+        'n_estimators': {'type': 'int', 'low': 50, 'high': 300},
+        'max_depth': {'type': 'int', 'low': 3, 'high': 20},
+        'min_samples_split': {'type': 'int', 'low': 2, 'high': 20},
+        'min_samples_leaf': {'type': 'int', 'low': 1, 'high': 10}
     }
-
     
     tree_params = {
-    'n_estimators': {'type': 'int', 'low': 100, 'high': 5000},
-    'max_depth': {'type': 'int', 'low': 3, 'high': 50},
-    'learning_rate': {'type': 'float', 'low': 1e-4, 'high': 0.3, 'log': True},
-    'subsample': {'type': 'float', 'low': 0.3, 'high': 1.0},
-    'colsample_bytree': {'type': 'float', 'low': 0.3, 'high': 1.0},
-    'reg_alpha': {'type': 'float', 'low': 1e-4, 'high': 10.0, 'log': True},
-    'reg_lambda': {'type': 'float', 'low': 1e-4, 'high': 10.0, 'log': True},
-    'min_child_weight': {'type': 'int', 'low': 1, 'high': 50}
-}
-
+        'n_estimators': {'type': 'int', 'low': 50, 'high': 300},
+        'max_depth': {'type': 'int', 'low': 3, 'high': 10},
+        'learning_rate': {'type': 'float', 'low': 0.01, 'high': 0.3},
+        'subsample': {'type': 'float', 'low': 0.6, 'high': 1.0},
+        'colsample_bytree': {'type': 'float', 'low': 0.6, 'high': 1.0}
+    }
     
     algos = {}
     
@@ -237,7 +209,7 @@ def main():
     parser.add_argument('--output_dir', default='models')
     parser.add_argument('--prefix', default='model')
     parser.add_argument('--metric', choices=[m.value for m in Metric], default='medae')
-    parser.add_argument('--n_trials', type=int, default=1)
+    parser.add_argument('--n_trials', required=True)
     args = parser.parse_args()
     
     os.makedirs(args.output_dir, exist_ok=True)
@@ -249,7 +221,12 @@ def main():
     results, metric_config = train_all_models(X_train, X_test, y_train, y_test, is_clf, preprocessor, args.n_trials, metric)
     best_model, best_name, best_score = create_report(results, y_test, is_clf, args.output_dir, args.prefix, metric, metric_config)
     
-    date_str = datetime.now().strftime("%Y%m%d")
+    model_path = os.path.join(args.output_dir, f'{args.prefix}_{best_name}_{best_score:.4f}.pkl')
+    joblib.dump(best_model, model_path)
+    print(f"Saved: {model_path}")
+
+    
+    date_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     model_path = os.path.join(args.output_dir, f'{args.prefix}_{best_name}_{args.metric}_{best_score:.4f}_{date_str}.pkl')
 
     joblib.dump(best_model, model_path)
